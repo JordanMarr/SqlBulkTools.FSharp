@@ -1,6 +1,6 @@
 <img src="http://gregnz.com/images/SqlBulkTools/icon-large.png" alt="SqlBulkTools">  
 
-* SqlBulkTools.FSharp is a wrapper around SqlBulkTools which profiles F# computation expressions: 
+* SqlBulkTools.FSharp is a wrapper around SqlBulkTools which provides F# computation expressions: 
   * `bulkInsert`
   * `bulkUpdate`
   * `bulkUpsert`
