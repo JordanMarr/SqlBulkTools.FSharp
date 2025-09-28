@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36109.1
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "SqlBulkTools.FSharp", "SqlBulkTools.FSharp\SqlBulkTools.FSharp.fsproj", "{30F6CAA3-4349-46C5-AAFE-E8B5F2C7F49E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{30F6CAA3-4349-46C5-AAFE-E8B5F2C7F49E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{30F6CAA3-4349-46C5-AAFE-E8B5F2C7F49E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{30F6CAA3-4349-46C5-AAFE-E8B5F2C7F49E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{30F6CAA3-4349-46C5-AAFE-E8B5F2C7F49E}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {6B0A0416-D96B-455C-BC1A-C69A7ED35A6D}
+	EndGlobalSection
+EndGlobal

@@ -1,0 +1,43 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageId>SqlBulkTools.FSharp</PackageId>
+    <Authors>tiagorosendo, zek99, gtaylor44, JordanMarr</Authors>
+    <Company />
+    <PackageProjectUrl>https://github.com/JordanMarr/SqlBulkTools.FSharp</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/JordanMarr/SqlBulkTools.FSharp</RepositoryUrl>
+    <PackageTags>sql bulk bulkinsert bulkupdate upsert fsharp</PackageTags>
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Util.fs" />
+    <Compile Include="Builders.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Update="FSharp.Core" Version="4.7.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\LICENSE">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="fretje.SqlBulkTools" Version="0.0.17" />
+  </ItemGroup>
+
+
+  <PropertyGroup>
+    <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);</TargetsForTfmSpecificBuildOutput>
+    <!-- include PDBs in the NuGet package -->
+    <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+  </PropertyGroup>
+
+</Project>
