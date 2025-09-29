@@ -24,25 +24,26 @@ and Operation<'T> =
     | OpUpsert of BulkInsertOrUpdate<'T>
     | OpDelete of BulkDelete<'T>
 
-type BulkInsertBuilder(conn: IDbConnection) = 
+[<AbstractClass>]
+type BulkInsertBase(conn: IDbConnection) =
     let def = { Operation = OpNone; Transaction = None }
 
     member this.For (rows: seq<'T>, f: 'T -> Context<'T>) =
         { def with Operation = OpForCollection (BulkOperations().Setup().ForCollection(rows)) }
 
-    member this.Yield _ = 
+    member this.Yield _ =
         def
 
     [<CustomOperation("transaction", MaintainsVariableSpace = true)>]
-    member this.Transaction (ctx: Context<'T>, tx: IDbTransaction) = 
+    member this.Transaction (ctx: Context<'T>, tx: IDbTransaction) =
         { ctx with Transaction = Some tx }
 
     [<CustomOperation("transaction", MaintainsVariableSpace = true)>]
-    member this.Transaction (ctx: Context<'T>, txMaybe: IDbTransaction option) = 
+    member this.Transaction (ctx: Context<'T>, txMaybe: IDbTransaction option) =
         { ctx with Transaction = txMaybe }
 
     [<CustomOperation("table", MaintainsVariableSpace = true)>]
-    member this.Table (ctx: Context<'T>, tbl) = 
+    member this.Table (ctx: Context<'T>, tbl) =
         match ctx.Operation with
         | OpForCollection bulk -> { ctx with Operation = OpWithTable(bulk.WithTable tbl) }
         | _ -> failwith "Must add collection first."
@@ -67,25 +68,70 @@ type BulkInsertBuilder(conn: IDbConnection) =
         | OpAddColumn bulk -> { ctx with Operation = OpInsert (bulk.BulkInsert().SetIdentityColumn(getPropertyName colExpr)) }
         | _ -> failwith "Must add columns first."
 
+
+type BulkInsert(conn: IDbConnection) =
+    inherit BulkInsertBase(conn)
+
     member this.Run ctx =
         match ctx.Operation with
-        | OpAddColumn bulk -> 
+        | OpAddColumn bulk ->
             match ctx.Transaction with
             | Some tx -> bulk.BulkInsert().Commit(conn, tx)
             | None -> bulk.BulkInsert().Commit(conn)
-        | OpInsert bulk -> 
+        | OpInsert bulk ->
             match ctx.Transaction with
             | Some tx -> bulk.Commit(conn, tx)
             | None -> bulk.Commit(conn)
-        | _ -> 
+        | _ ->
+            failwith "Must add at least one column first."
+
+type BulkInsertTask(conn: IDbConnection) =
+    inherit BulkInsertBase(conn)
+
+    member this.Run ctx =
+        match ctx.Operation with
+        | OpAddColumn bulk ->
+            match ctx.Transaction with
+            | Some tx -> bulk.BulkInsert().CommitAsync(conn, tx)
+            | None -> bulk.BulkInsert().CommitAsync(conn)
+        | OpInsert bulk ->
+            match ctx.Transaction with
+            | Some tx -> bulk.CommitAsync(conn, tx)
+            | None -> bulk.CommitAsync(conn)
+        | _ ->
+            failwith "Must add at least one column first."
+
+type BulkInsertAsync(conn: IDbConnection) =
+    inherit BulkInsertBase(conn)
+
+    member this.Run ctx =
+        match ctx.Operation with
+        | OpAddColumn bulk ->
+            match ctx.Transaction with
+            | Some tx -> bulk.BulkInsert().CommitAsync(conn, tx) |> Async.AwaitTask
+            | None -> bulk.BulkInsert().CommitAsync(conn) |> Async.AwaitTask
+        | OpInsert bulk ->
+            match ctx.Transaction with
+            | Some tx -> bulk.CommitAsync(conn, tx) |> Async.AwaitTask
+            | None -> bulk.CommitAsync(conn) |> Async.AwaitTask
+        | _ ->
             failwith "Must add at least one column first."
 
 /// A bulk insert will attempt to insert all records. If you have any unique constraints on columns, these must be respected.
 /// Notes: Only the columns configured (via AddColumn) will be evaluated.
-let bulkInsert conn = BulkInsertBuilder(conn)
+let bulkInsert conn = BulkInsert(conn)
+
+/// A task-based bulk insert will attempt to insert all records. If you have any unique constraints on columns, these must be respected.
+/// Notes: Only the columns configured (via AddColumn) will be evaluated.
+let bulkInsertTask conn = BulkInsertTask(conn)
+
+/// An async bulk insert will attempt to insert all records. If you have any unique constraints on columns, these must be respected.
+/// Notes: Only the columns configured (via AddColumn) will be evaluated.
+let bulkInsertAsync conn = BulkInsertAsync(conn)
 
 
-type BulkUpdateBuilder(conn: IDbConnection) =
+[<AbstractClass>]
+type BulkUpdateBase(conn: IDbConnection) =
     let def = { Operation = OpNone; Transaction = None }
 
     member this.For (rows: seq<'T>, f: 'T -> Context<'T>) =
@@ -95,11 +141,11 @@ type BulkUpdateBuilder(conn: IDbConnection) =
         def
 
     [<CustomOperation("transaction", MaintainsVariableSpace = true)>]
-    member this.Transaction (ctx: Context<'T>, tx: IDbTransaction) = 
+    member this.Transaction (ctx: Context<'T>, tx: IDbTransaction) =
         { ctx with Transaction = Some tx }
 
     [<CustomOperation("transaction", MaintainsVariableSpace = true)>]
-    member this.Transaction (ctx: Context<'T>, txMaybe: IDbTransaction option) = 
+    member this.Transaction (ctx: Context<'T>, txMaybe: IDbTransaction option) =
         { ctx with Transaction = txMaybe }
 
     [<CustomOperation("table", MaintainsVariableSpace = true)>]
@@ -143,6 +189,10 @@ type BulkUpdateBuilder(conn: IDbConnection) =
         | OpUpdate bulk -> { ctx with Operation = OpUpdate (bulk.SetIdentityColumn(getPropertyName colExpr)) }
         | _ -> failwith "Must add columns first."
 
+
+type BulkUpdate(conn: IDbConnection) =
+    inherit BulkUpdateBase(conn)
+
     member this.Run (ctx: Context<'T>) =
         match ctx.Operation with
         | OpUpdate bulk ->
@@ -151,12 +201,43 @@ type BulkUpdateBuilder(conn: IDbConnection) =
             | None -> bulk.Commit(conn)
         | _ -> failwith "Must add at least one column first."
 
+type BulkUpdateTask(conn: IDbConnection) =
+    inherit BulkUpdateBase(conn)
+
+    member this.Run (ctx: Context<'T>) =
+        match ctx.Operation with
+        | OpUpdate bulk ->
+            match ctx.Transaction with
+            | Some tx -> bulk.CommitAsync(conn, tx)
+            | None -> bulk.CommitAsync(conn)
+        | _ -> failwith "Must add at least one column first."
+
+type BulkUpdateAsync(conn: IDbConnection) =
+    inherit BulkUpdateBase(conn)
+
+    member this.Run (ctx: Context<'T>) =
+        match ctx.Operation with
+        | OpUpdate bulk ->
+            match ctx.Transaction with
+            | Some tx -> bulk.CommitAsync(conn, tx) |> Async.AwaitTask
+            | None -> bulk.CommitAsync(conn) |> Async.AwaitTask
+        | _ -> failwith "Must add at least one column first."
+
 /// A bulk update will attempt to update any matching records. Notes: (1) BulkUpdate requires at least one MatchTargetOn
 /// property to be configured. (2) Only the columns configured (via AddColumn) will be evaluated.
-let bulkUpdate conn = BulkUpdateBuilder(conn)
+let bulkUpdate conn = BulkUpdate(conn)
+
+/// A task-based bulk update will attempt to update any matching records. Notes: (1) BulkUpdate requires at least one MatchTargetOn
+/// property to be configured. (2) Only the columns configured (via AddColumn) will be evaluated.
+let bulkUpdateTask conn = BulkUpdateTask(conn)
+
+/// An async bulk update will attempt to update any matching records. Notes: (1) BulkUpdate requires at least one MatchTargetOn
+/// property to be configured. (2) Only the columns configured (via AddColumn) will be evaluated.
+let bulkUpdateAsync conn = BulkUpdateAsync(conn)
 
 
-type BulkUpsertBuilder(conn: IDbConnection) =
+[<AbstractClass>]
+type BulkUpsertBase(conn: IDbConnection) =
     let def = { Operation = OpNone; Transaction = None }
 
     member this.For (rows: seq<'T>, f: 'T -> Context<'T>) =
@@ -166,11 +247,11 @@ type BulkUpsertBuilder(conn: IDbConnection) =
         def
 
     [<CustomOperation("transaction", MaintainsVariableSpace = true)>]
-    member this.Transaction (ctx: Context<'T>, tx: IDbTransaction) = 
+    member this.Transaction (ctx: Context<'T>, tx: IDbTransaction) =
         { ctx with Transaction = Some tx }
 
     [<CustomOperation("transaction", MaintainsVariableSpace = true)>]
-    member this.Transaction (ctx: Context<'T>, txMaybe: IDbTransaction option) = 
+    member this.Transaction (ctx: Context<'T>, txMaybe: IDbTransaction option) =
         { ctx with Transaction = txMaybe }
 
     [<CustomOperation("table", MaintainsVariableSpace = true)>]
@@ -214,6 +295,10 @@ type BulkUpsertBuilder(conn: IDbConnection) =
         | OpUpsert bulk -> { ctx with Operation = OpUpsert (bulk.SetIdentityColumn(getPropertyName colExpr)) }
         | _ -> failwith "Must add columns first."
 
+
+type BulkUpsert(conn: IDbConnection) =
+    inherit BulkUpsertBase(conn)
+
     member this.Run (ctx: Context<'T>) =
         match ctx.Operation with
         | OpUpsert bulk ->
@@ -222,14 +307,49 @@ type BulkUpsertBuilder(conn: IDbConnection) =
             | None -> bulk.Commit(conn)
         | _ -> failwith "Must add at least one column first."
 
+type BulkUpsertTask(conn: IDbConnection) =
+    inherit BulkUpsertBase(conn)
+
+    member this.Run (ctx: Context<'T>) =
+        match ctx.Operation with
+        | OpUpsert bulk ->
+            match ctx.Transaction with
+            | Some tx -> bulk.CommitAsync(conn, tx)
+            | None -> bulk.CommitAsync(conn)
+        | _ -> failwith "Must add at least one column first."
+
+type BulkUpsertAsync(conn: IDbConnection) =
+    inherit BulkUpsertBase(conn)
+
+    member this.Run (ctx: Context<'T>) =
+        match ctx.Operation with
+        | OpUpsert bulk ->
+            match ctx.Transaction with
+            | Some tx -> bulk.CommitAsync(conn, tx) |> Async.AwaitTask
+            | None -> bulk.CommitAsync(conn) |> Async.AwaitTask
+        | _ -> failwith "Must add at least one column first."
+
 /// A bulk insert or update is also known as bulk upsert or merge. All matching rows from the source will be updated.
 /// Any unique rows not found in target but exist in source will be added. Notes: (1) BulkInsertOrUpdate requires at least
 /// one MatchTargetOn property to be configured. (2) Only the columns configured (via AddColumn)
 /// will be evaluated.
-let bulkUpsert conn = BulkUpsertBuilder(conn)
+let bulkUpsert conn = BulkUpsert(conn)
+
+/// A task-based bulk insert or update is also known as bulk upsert or merge. All matching rows from the source will be updated.
+/// Any unique rows not found in target but exist in source will be added. Notes: (1) BulkInsertOrUpdate requires at least
+/// one MatchTargetOn property to be configured. (2) Only the columns configured (via AddColumn)
+/// will be evaluated.
+let bulkUpsertTask conn = BulkUpsertTask(conn)
+
+/// An async bulk insert or update is also known as bulk upsert or merge. All matching rows from the source will be updated.
+/// Any unique rows not found in target but exist in source will be added. Notes: (1) BulkInsertOrUpdate requires at least
+/// one MatchTargetOn property to be configured. (2) Only the columns configured (via AddColumn)
+/// will be evaluated.
+let bulkUpsertAsync conn = BulkUpsertAsync(conn)
 
 
-type BulkDeleteBuilder(conn: IDbConnection) =
+[<AbstractClass>]
+type BulkDeleteBase(conn: IDbConnection) =
     let def = { Operation = OpNone; Transaction = None }
 
     member this.For (rows: seq<'T>, f: 'T -> Context<'T>) =
@@ -239,11 +359,11 @@ type BulkDeleteBuilder(conn: IDbConnection) =
         def
 
     [<CustomOperation("transaction", MaintainsVariableSpace = true)>]
-    member this.Transaction (ctx: Context<'T>, tx: IDbTransaction) = 
+    member this.Transaction (ctx: Context<'T>, tx: IDbTransaction) =
         { ctx with Transaction = Some tx }
 
     [<CustomOperation("transaction", MaintainsVariableSpace = true)>]
-    member this.Transaction (ctx: Context<'T>, txMaybe: IDbTransaction option) = 
+    member this.Transaction (ctx: Context<'T>, txMaybe: IDbTransaction option) =
         { ctx with Transaction = txMaybe }
 
     [<CustomOperation("table", MaintainsVariableSpace = true)>]
@@ -287,6 +407,10 @@ type BulkDeleteBuilder(conn: IDbConnection) =
         | OpDelete bulk -> { ctx with Operation = OpDelete (bulk.SetIdentityColumn(getPropertyName colExpr)) }
         | _ -> failwith "Must add columns first."
 
+
+type BulkDelete(conn: IDbConnection) =
+    inherit BulkDeleteBase(conn)
+
     member this.Run (ctx: Context<'T>) =
         match ctx.Operation with
         | OpDelete bulk ->
@@ -295,6 +419,36 @@ type BulkDeleteBuilder(conn: IDbConnection) =
             | None -> bulk.Commit(conn)
         | _ -> failwith "Must add at least one column first."
 
+type BulkDeleteTask(conn: IDbConnection) =
+    inherit BulkDeleteBase(conn)
+
+    member this.Run (ctx: Context<'T>) =
+        match ctx.Operation with
+        | OpDelete bulk ->
+            match ctx.Transaction with
+            | Some tx -> bulk.CommitAsync(conn, tx)
+            | None -> bulk.CommitAsync(conn)
+        | _ -> failwith "Must add at least one column first."
+
+type BulkDeleteAsync(conn: IDbConnection) =
+    inherit BulkDeleteBase(conn)
+
+    member this.Run (ctx: Context<'T>) =
+        match ctx.Operation with
+        | OpDelete bulk ->
+            match ctx.Transaction with
+            | Some tx -> bulk.CommitAsync(conn, tx) |> Async.AwaitTask
+            | None -> bulk.CommitAsync(conn) |> Async.AwaitTask
+        | _ -> failwith "Must add at least one column first."
+
 /// A bulk delete will delete records when matched. Consider using a DTO with only the needed information (e.g. PK).
 /// Notes: BulkDelete requires at least one MatchTargetOn property to be configured.
-let bulkDelete conn = BulkDeleteBuilder(conn)
+let bulkDelete conn = BulkDelete(conn)
+
+/// A task-based bulk delete will delete records when matched. Consider using a DTO with only the needed information (e.g. PK).
+/// Notes: BulkDelete requires at least one MatchTargetOn property to be configured.
+let bulkDeleteTask conn = BulkDeleteTask(conn)
+
+/// An async bulk delete will delete records when matched. Consider using a DTO with only the needed information (e.g. PK).
+/// Notes: BulkDelete requires at least one MatchTargetOn property to be configured.
+let bulkDeleteAsync conn = BulkDeleteAsync(conn)
