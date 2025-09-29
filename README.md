@@ -35,7 +35,6 @@ let count =
         column user.SSN
 	identity user.Id
     } 
-if count > 0 then tx.Commit() else tx.Rollback()
 ```
 
 ### Bulk Update
@@ -57,6 +56,10 @@ bulkUpdate conn {
     column row.CustomerZip
     matchTargetOn row.Id
 }
+
+if count > 0
+then tx.Commit()
+else tx.Rollback()
 ```
 
 ### Bulk Upsert
