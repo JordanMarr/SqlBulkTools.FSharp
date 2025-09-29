@@ -33,7 +33,7 @@ let count =
         columnMap user.FirstName "FName"
         columnMap user.LastName "LName"
         column user.SSN
-	identity user.Id
+        identity user.Id
     } 
 ```
 
