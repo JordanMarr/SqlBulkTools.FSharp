@@ -24,12 +24,10 @@
 ### Bulk Insert
 ```fsharp
 use conn = new new SqlConnection("conn str..")
-use tx = conn.BeginTransaction()
 
 let count =
     bulkInsert conn {
         for user in users do
-        transaction tx
         table "Users"
         column user.Id
         columnMap user.FirstName "FName"
@@ -42,8 +40,13 @@ if count > 0 then tx.Commit() else tx.Rollback()
 
 ### Bulk Update
 ```fsharp
+use conn = new new SqlConnection("conn str..")
+// Explicit transaction is optional
+use tx = conn.BeginTransaction()
+
 bulkUpdate conn {
     for row in rows do
+    transaction tx
     table (nameof ctx.Dbo.Orders)
     column row.Id
     column row.OrderDate
