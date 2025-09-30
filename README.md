@@ -1,10 +1,10 @@
 <img src="http://gregnz.com/images/SqlBulkTools/icon-large.png" alt="SqlBulkTools">  
 
 * SqlBulkTools.FSharp is a wrapper around SqlBulkTools which provides F# computation expressions: 
-  * `bulkInsert`
-  * `bulkUpdate`
-  * `bulkUpsert`
-  * `bulkDelete`
+  * `bulkInsert`, `bulkInsertAsync`, `bulkInsertTask`
+  * `bulkUpdate`, `bulkUpdateAsync`, `bulkUpdateTask`
+  * `bulkUpsert`, `bulkUpsertAsync`, `bulkUpsertTask`
+  * `bulkDelete`, `bulkDeleteAsync`, `bulkDeleteTask`
 
 * SqlBulkTools.FSharp v1.0.0 currently relies on a fork of SqlBulkTools by [fretje](https://github.com/fretje/SqlBulkTools) which migrated to `Microsoft.Data.SqlClient`.
   * (Previous versions used `System.Data.SqlClient`.)
